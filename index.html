@@ -225,10 +225,8 @@
     .selection-rule { display: grid; grid-template-columns: 155px 1fr; align-items: center; gap: 24px; padding: 23px 25px; background: linear-gradient(135deg, #f5fafc 0%, #fff 70%); }
     .selection-rule-copy strong { display: block; color: var(--blue); font-size: 13px; text-transform: uppercase; }
     .selection-rule-copy span { display: block; margin-top: 5px; color: var(--muted); font-size: 12px; line-height: 1.45; }
-    .selection-equation { display: flex; flex-wrap: wrap; justify-content: center; align-items: baseline; gap: 7px; color: #233d49; font-size: 19px; font-weight: 760; text-align: center; }
-    .selection-equation .operator { color: #81939b; font-weight: 500; }
-    .selection-equation .score-term { color: var(--blue); }
-    .selection-equation .count-term { color: var(--green); }
+    .selection-equation { display: flex; justify-content: center; color: #233d49; font-size: 25px; text-align: center; }
+    .selection-equation math { font-family: Georgia, "Times New Roman", serif; }
     .selection-formula sub, .selection-formula sup { font-size: 62%; }
     .selection-signals { display: grid; grid-template-columns: 1fr 1fr; border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); }
     .selection-signal { min-width: 0; padding: 19px 24px; }
@@ -454,7 +452,7 @@
       .artifact-compare, .compile-example, .record-grid { grid-template-columns: 1fr; }
       .selection-rule, .selection-signals { grid-template-columns: 1fr; }
       .selection-rule { gap: 15px; padding: 20px; }
-      .selection-equation { font-size: 17px; text-align: left; }
+      .selection-equation { font-size: 21px; }
       .selection-signal { padding: 17px 20px; }
       .selection-signal + .selection-signal { border-left: 0; border-top: 1px solid var(--line); }
       .selection-foot { padding: 13px 20px; }
@@ -506,7 +504,7 @@
         <div class="section-head">
           <p class="eyebrow">Motivation</p>
           <h2>Move the search closer to algorithm design</h2>
-          <p>Auto-bidding algorithms are usually refined through repeated experiments. LLM-based evolution can automate this loop, but the search representation and the organization of prior outcomes determine what the model can explore next.</p>
+          <p>Auto-bidding algorithms are usually refined through repeated experiments. LLM-based evolution can automate this loop, but its effectiveness depends on how candidate algorithms are represented and how knowledge from previous evaluations is organized for later generations.</p>
         </div>
 
         <figure class="paper-figure">
@@ -547,27 +545,33 @@
             <div class="case-index">01</div>
             <div class="case-content">
               <h3>Parent selection</h3>
-              <p>ADAGE first removes failed and low-scoring candidates, then samples a parent from the remaining pool. The sampling weight balances evaluation quality against repeated expansion of the same candidate.</p>
+              <p>ADAGE first removes failed candidates and candidates below the quality threshold. It then samples a parent by balancing its evaluation score against how often it has already been selected.</p>
               <div class="selection-formula" aria-label="Parent selection weight">
                 <div class="selection-rule">
-                  <div class="selection-rule-copy"><strong>Sampling rule</strong><span>Applied to candidates that pass the quality gate</span></div>
-                  <div class="selection-equation"><span>selection weight</span><span class="operator">∝</span><span class="score-term">score preference</span><span class="operator">÷</span><span class="count-term">reuse penalty</span></div>
+                  <div class="selection-rule-copy"><strong>Selection weight</strong><span>For candidate <i>i</i> in the eligible parent pool</span></div>
+                  <div class="selection-equation" aria-label="alpha i is proportional to sigmoid of eta times normalized J i, multiplied by one plus q i to the power negative gamma">
+                    <math display="inline">
+                      <msub><mi>α</mi><mi>i</mi></msub><mo>∝</mo>
+                      <mstyle mathcolor="#176b8f"><mi>σ</mi><mo>(</mo><mi>η</mi><msub><mover accent="true"><mi>J</mi><mo>~</mo></mover><mi>i</mi></msub><mo>)</mo></mstyle>
+                      <mstyle mathcolor="#26735f"><msup><mrow><mo>(</mo><mn>1</mn><mo>+</mo><msub><mi>q</mi><mi>i</mi></msub><mo>)</mo></mrow><mrow><mo>−</mo><mi>γ</mi></mrow></msup></mstyle>
+                    </math>
+                  </div>
                 </div>
                 <div class="selection-signals">
                   <div class="selection-signal">
-                    <strong>Prefer stronger candidates</strong>
-                    <p>A higher evaluation score increases the sampling probability.</p>
-                    <span class="signal-formula">score preference = sigmoid(normalized score)</span>
-                    <div class="selection-trend"><span>lower score</span><span class="selection-trend-line"></span><b>more likely</b></div>
+                    <strong>Evaluation quality</strong>
+                    <p><i>J&#771;</i><sub>i</sub> is the evaluation score normalized by the median and median absolute deviation. Higher values receive larger sigmoid weights.</p>
+                    <span class="signal-formula">evaluation score ↑</span>
+                    <div class="selection-trend"><span>score increases</span><span class="selection-trend-line"></span><b>probability increases</b></div>
                   </div>
                   <div class="selection-signal penalty">
-                    <strong>Limit repeated expansion</strong>
-                    <p>A candidate selected many times receives a larger reuse penalty.</p>
-                    <span class="signal-formula">reuse penalty = (1 + prior selections)<sup>γ</sup></span>
-                    <div class="selection-trend"><span>more selections</span><span class="selection-trend-line"></span><b>less likely</b></div>
+                    <strong>Selection frequency</strong>
+                    <p><i>q</i><sub>i</sub> counts the children previously generated from candidate <i>i</i>. Repeatedly selected candidates receive smaller weights.</p>
+                    <span class="signal-formula">selection count ↑</span>
+                    <div class="selection-trend"><span>count increases</span><span class="selection-trend-line"></span><b>probability decreases</b></div>
                   </div>
                 </div>
-                <div class="selection-foot">The resulting weights are normalized across eligible candidates before sampling. The exponent γ controls the strength of the reuse penalty.</div>
+                <div class="selection-foot">The weights are normalized over the eligible parent pool before sampling. The parameters η and γ control sensitivity to evaluation quality and repeated selection, respectively.</div>
               </div>
               <p class="generation-one-note">In Generation 1, the initial DT is the only eligible candidate, so its sampling probability is 1.</p>
             </div>
@@ -3032,7 +3036,7 @@ if __name__ == "__main__":
             <div class="case-index">04</div>
             <div class="case-content">
               <h3>Wiki knowledge base maintenance</h3>
-              <p>ADAGE maintains the Wiki knowledge base by recording each evaluated generation, compiling the record into linked Wiki pages, and periodically rewriting the overview document. The Gen 1 example below traces the information passed between these three modules.</p>
+              <p>ADAGE maintains the Wiki knowledge base by recording each evaluated generation, compiling the record into linked Wiki pages, and periodically rewriting the overview document. The first three modules trace this process, and the final section visualizes the resulting Wiki page graph.</p>
               <div class="wiki-modules">
                 <section class="wiki-module">
                   <div class="wiki-module-head"><span class="phase-index">04.1</span><div><h4>Generation recording</h4><p>The complete evaluation outcome is stored as an immutable generation record.</p></div></div>
@@ -3246,6 +3250,10 @@ The pattern shows **budget allocation and gradient‑norm control** as the domin
 
 **Priority Allocation**: Allocate **70 %** of the remaining budget to the five exploration‑oriented items (focus on cross‑modal attention and learned scheduler) and **30 %** to the two exploitation‑oriented items (high‑resolution token &amp; multi‑task auxiliaries). This split deliberately shifts effort away from the saturated FiLM theme while preserving a modest exploitation lane for fine‑grained tuning.</pre>
                   </details>
+                </section>
+
+                <section class="wiki-module" id="wiki-visualization">
+                  <div class="wiki-module-head"><span class="phase-index">04.4</span><div><h4>Wiki knowledge base visualization</h4><p>The resulting Wiki page graph connects effective patterns, failure patterns, operator insights, and literature analyses through semantic links. Selecting a page reveals its compiled content and neighboring pages.</p></div></div>
                   <div class="wiki-graph-panel">
                     <div class="wiki-graph-head">
                       <div><strong>Interactive Wiki page graph</strong><span>Select a page to inspect its compiled content and semantic links.</span></div>
